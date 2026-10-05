@@ -1,0 +1,26 @@
+[package]
+name = "ticketsmith"
+version = "0.1.0"
+edition = "2024"
+description = "A ticket designer for Boca Systems printers"
+license = "MIT"
+repository = "https://github.com/wes/ticketsmith"
+readme = "README.md"
+keywords = ["boca", "fgl", "ticket", "printer", "gpui"]
+categories = ["gui"]
+
+[dependencies]
+gpui-kit = "0.6.0"
+
+[dev-dependencies]
+# Brings in GPUI's headless test harness so the window logic can be driven
+# without a display.
+gpui-kit = { version = "0.6.0", features = ["test-support"] }
+
+[profile.dev]
+# GPUI is a big dependency tree; optimising it once keeps the app responsive
+# while leaving our own crate fast to rebuild.
+opt-level = 0
+
+[profile.dev.package."*"]
+opt-level = 2

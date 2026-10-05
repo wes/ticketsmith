@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  The version is not kept here. scripts/bundle.sh writes the one in Cargo.toml
+  into the copy inside the app, so Cargo.toml is the only place it changes.
+-->
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>Ticketsmith</string>
+	<key>CFBundleExecutable</key>
+	<string>ticketsmith</string>
+	<key>CFBundleIconFile</key>
+	<string>Ticketsmith</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.joedesigns.ticketsmith</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Ticketsmith</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>0.0.0</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>12.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Ticketsmith sends print jobs to Boca printers on your network.</string>
+</dict>
+</plist>

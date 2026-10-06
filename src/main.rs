@@ -4,6 +4,7 @@ mod fgl;
 mod preview;
 mod ticket;
 mod transport;
+mod update;
 
 use gpui_kit::*;
 
@@ -26,6 +27,7 @@ fn main() {
             cx.spawn(async move |cx| {
                 cx.open_window(options, |window, cx| {
                     let view = app::Ticketsmith::view(window, cx);
+                    view.update(cx, |view, cx| view.watch_for_updates(cx));
                     cx.new(|cx| component::Root::new(view, window, cx))
                 })
                 .expect("failed to open window");

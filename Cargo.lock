@@ -6962,7 +6962,10 @@ dependencies = [
 name = "ticketsmith"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "gpui-kit",
+ "libc",
+ "serde_json",
 ]
 
 [[package]]

@@ -132,7 +132,7 @@ bold "About to:"
 [ "$next" = "$current" ] || echo "  • set the version to $next in Cargo.toml and Cargo.lock"
 echo "  • build both architectures, sign as $IDENTITY, and notarize (about 5–15 minutes)"
 tagged "$next" || echo "  • commit \"Release $next\" (if anything changed), tag v$next, push both"
-echo "  • publish Ticketsmith-$next.dmg (and a copy as Ticketsmith.dmg) to $REPO"
+echo "  • publish Ticketsmith-$next.dmg (and a copy as Ticketsmith.dmg) to $REPO — installed copies are offered it"
 echo
 read -r -p "Go ahead? [y/N] " answer
 [[ "$answer" =~ ^[Yy]$ ]] || { echo "Nothing done."; exit 1; }

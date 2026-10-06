@@ -70,3 +70,40 @@ architecture, ad-hoc signed.
 
 `bundle/icon-1024.png` is drawn by `scripts/make-icon.swift`. Edit the script
 and run `swift scripts/make-icon.swift bundle/icon-1024.png` to change it.
+
+## How an installed copy updates itself
+
+The status bar shows the running version. At launch, and every six hours while
+it stays open, the app asks GitHub for the latest release
+(`api.github.com/repos/wes/ticketsmith/releases/latest`). When that is newer, a
+link appears beside the version:
+
+1. **Update to <version>** downloads the disk image and checks it, and nothing
+   is replaced yet. The app then says the update is ready.
+2. **Restart to update** swaps the new app in for the old one in a single step
+   (`renamex_np` with `RENAME_SWAP`) and relaunches. It is a second click
+   because restarting clears the ticket on screen.
+
+An update is refused unless all three of these hold for the app in the disk
+image:
+
+- its signature is intact (`codesign --verify --deep --strict`),
+- its leaf certificate is team `288BJX6YHP`, since a valid Developer ID only
+  proves that *somebody* signed it,
+- Apple has notarized it (`spctl --assess`).
+
+So a release is not only a download; it is what every installed copy will
+fetch and run. The version comes from the tag, compared with the one compiled in
+from `Cargo.toml`, and the script keeps the two in step. Drafts and prereleases
+are ignored.
+
+A copy that cannot replace itself shows **Download <version>**, which opens the
+release page instead. That is a `cargo run` build, an app run straight from the
+disk image, or one in a folder this user cannot write to.
+
+To try the whole flow against the real latest release, run an installed copy
+as if it were older:
+
+```sh
+TICKETSMITH_PRETEND_VERSION=0.0.1 /Applications/Ticketsmith.app/Contents/MacOS/ticketsmith
+```

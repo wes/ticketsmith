@@ -17,11 +17,14 @@ printer receives.
 signed and notarized. Older versions are on the
 [releases page](https://github.com/wes/ticketsmith/releases).
 
+The app keeps itself current: the status bar shows the version, and when a newer
+release is out, a link beside it downloads the update and restarts into it.
+
 ## Running it
 
 ```
 cargo run              # launch
-cargo test             # 84 tests
+cargo test             # 98 tests
 scripts/bundle.sh      # build target/Ticketsmith.app
 ```
 
@@ -78,6 +81,7 @@ The core is plain Rust with no UI dependency and carries most of the tests.
 | `src/barcode.rs` | Symbology validation, FGL emission, GTIN check digits, and bar/space modules for the preview. |
 | `src/ticket.rs` | The document: stock size, elements, element geometry, hit testing, and the whole-job emitter. |
 | `src/transport.rs` | The four ways out. |
+| `src/update.rs` | Checking GitHub for a newer release, and verifying and installing it. |
 | `src/preview.rs` | Projection from printer dots to window pixels, and all the painting. |
 | `src/app.rs` | The GPUI window: toolbar, preview interaction, inspector, print panel. |
 

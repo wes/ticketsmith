@@ -29,6 +29,7 @@ use crate::fgl::{Density, Font, PrintMode, Rotation};
 use crate::preview::{self, Layout, PaintOptions, Palette};
 use crate::ticket::{self, Doc, Element, Kind};
 use crate::transport::{self, Target};
+use crate::update::{self, Stage, Updater};
 
 actions!(
     ticketsmith,
@@ -240,6 +241,7 @@ pub struct Ticketsmith {
     show_source: bool,
     status_ok: bool,
     status: SharedString,
+    updater: Updater,
 
     /// Where the preview canvas ended up last frame, captured during prepaint so
     /// mouse handlers can turn window points into printer dots.
@@ -314,6 +316,7 @@ impl Ticketsmith {
             show_source: false,
             status_ok: true,
             status: "".into(),
+            updater: Updater::new(),
             preview_bounds: Rc::new(Cell::new(Bounds::default())),
             drag: None,
             fields,
@@ -713,6 +716,117 @@ impl Ticketsmith {
     }
 
     // -----------------------------------------------------------------------
+    // Updates
+    // -----------------------------------------------------------------------
+
+    /// Checks for a newer release now and every few hours after. Started by
+    /// `main` rather than `new`, so the tests never touch the network.
+    pub fn watch_for_updates(&mut self, cx: &mut Context<Self>) {
+        if !update::supported() {
+            return;
+        }
+        // An update downloaded but never installed is still mounted; quitting
+        // unmounts it rather than leaving a hidden volume until the next reboot.
+        self._subscriptions.push(cx.on_app_quit(|this, _| {
+            this.updater.mounted.take();
+            async {}
+        }));
+        cx.spawn(async move |this, cx| {
+            loop {
+                let found = cx.background_spawn(async { update::check() }).await;
+                let open = this.update(cx, |this, cx| {
+                    // A failed check says nothing: being offline is ordinary,
+                    // and the next check may well work.
+                    if let Ok(Some(release)) = found {
+                        this.updater.offer(release);
+                        cx.notify();
+                    }
+                });
+                if open.is_err() {
+                    break;
+                }
+                cx.background_executor().timer(update::CHECK_EVERY).await;
+            }
+        })
+        .detach();
+    }
+
+    fn on_update_link(&mut self, cx: &mut Context<Self>) {
+        match self.updater.stage.clone() {
+            Stage::Available(release) if !self.updater.installable => {
+                cx.open_url(&release.page_url);
+            }
+            Stage::Available(release) => self.download_update(release, cx),
+            Stage::Ready(release) => self.install_update(release, cx),
+            _ => {}
+        }
+    }
+
+    /// Downloads and verifies, then waits: installing restarts the app, which
+    /// would clear the ticket on screen, so that takes a second click.
+    fn download_update(&mut self, release: update::Release, cx: &mut Context<Self>) {
+        self.updater.stage = Stage::Downloading(release.clone());
+        cx.notify();
+
+        cx.spawn(async move |this, cx| {
+            let fetched = cx
+                .background_spawn({
+                    let release = release.clone();
+                    async move { update::download(&release).and_then(update::verify) }
+                })
+                .await;
+            this.update(cx, |this, cx| {
+                match fetched {
+                    Ok(mounted) => {
+                        this.updater.mounted = Some(mounted);
+                        this.updater.stage = Stage::Ready(release.clone());
+                        this.set_status(
+                            true,
+                            format!(
+                                "Ticketsmith {} is ready. Restarting clears the current ticket.",
+                                release.version
+                            ),
+                        );
+                    }
+                    Err(error) => {
+                        this.updater.stage = Stage::Available(release);
+                        this.set_status(false, format!("Couldn't update: {error:#}"));
+                    }
+                }
+                cx.notify();
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    fn install_update(&mut self, release: update::Release, cx: &mut Context<Self>) {
+        let Some(mounted) = self.updater.mounted.take() else {
+            return;
+        };
+        self.updater.stage = Stage::Installing(release.clone());
+        cx.notify();
+
+        cx.spawn(async move |this, cx| {
+            // The volume unmounts when `mounted` drops at the end of this.
+            let installed = cx.background_spawn(async move { update::install(&mounted) }).await;
+            match installed {
+                // The new copy is already starting.
+                Ok(()) => cx.update(|cx| cx.quit()),
+                Err(error) => {
+                    this.update(cx, |this, cx| {
+                        this.updater.stage = Stage::Available(release);
+                        this.set_status(false, format!("Couldn't update: {error:#}"));
+                        cx.notify();
+                    })
+                    .ok();
+                }
+            }
+        })
+        .detach();
+    }
+
+    // -----------------------------------------------------------------------
     // Preview interaction
     // -----------------------------------------------------------------------
 
@@ -1019,9 +1133,27 @@ impl Ticketsmith {
                     .child(self.status.clone()),
             )
             .child(
-                div()
+                h_flex()
+                    .gap_3()
+                    .items_center()
                     .text_color(cx.theme().muted_foreground)
-                    .child(dots),
+                    .child(dots)
+                    .child(format!("v{}", update::current()))
+                    .when_some(self.updater.progress(), |this, progress| this.child(progress))
+                    .when_some(self.updater.link(), |this, link| {
+                        // The theme's link colour is the text colour, which
+                        // would leave this looking like any other label.
+                        this.child(
+                            div()
+                                .id("update")
+                                .text_color(cx.theme().blue)
+                                .font_weight(FontWeight::MEDIUM)
+                                .cursor_pointer()
+                                .hover(|style| style.underline())
+                                .child(link)
+                                .on_click(cx.listener(|this, _, _, cx| this.on_update_link(cx))),
+                        )
+                    }),
             )
     }
 }
